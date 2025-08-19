@@ -36,6 +36,9 @@ public class SevOneToOTLPTransformer {
             if ("-c".equals(args[i])) {
                 configFilePath = args[i + 1];
                 System.out.println("-c option detected, loading file: " + configFilePath);
+            } else
+            {
+                System.out.println("Loading configurations from default config.properties");
             }
         }
 
