@@ -1,0 +1,9 @@
+services:
+  kafka-streams-app:
+    build: .
+    container_name: sevone-otlp-transformer
+    volumes:
+      - ./config.properties:/app/config.properties
+    restart: always
+    environment:
+      - TZ=UTC
