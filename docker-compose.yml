@@ -3,5 +3,7 @@ services:
     image: gschimmel/transformers-sevone-to-otlp:latest
 #    container_name: sevone-otlp-transformer
     volumes:
-      - ./config.properties:/app/config.properties
-    restart: always
+      - ./config.properties:/config/config.yaml
+    restart: unless-stopped
+  
+

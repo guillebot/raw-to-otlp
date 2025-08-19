@@ -30,7 +30,7 @@ public class SevOneToOTLPTransformer {
      * @throws IOException
      */
     public static void main(String[] args) throws IOException {
-        String configFilePath = "config.properties";
+        String configFilePath = "config.yaml"; // default config file path
 
         for (int i = 0; i < args.length - 1; i++) {
             if ("-c".equals(args[i])) {
@@ -38,7 +38,7 @@ public class SevOneToOTLPTransformer {
                 System.out.println("-c option detected, loading file: " + configFilePath);
             } else
             {
-                System.out.println("Loading configurations from default config.properties");
+                System.out.println("Loading configurations from default config.yaml file.");
             }
         }
 
