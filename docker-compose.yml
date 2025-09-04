@@ -1,6 +1,6 @@
 services:
   kafka-streams-app:
-    image: gschimmel/transformers-sevone-to-otlp:latest
+    image: gschimmel/transformers-raw-to-otlp:latest
     volumes:
       - ./config.properties:/config/config.yaml
     restart: unless-stopped

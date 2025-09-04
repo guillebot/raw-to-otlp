@@ -1,4 +1,4 @@
-package com.example.kafkastreams;
+package com.gstechs.kafkastreams;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
