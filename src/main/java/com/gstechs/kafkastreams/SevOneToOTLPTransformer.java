@@ -8,13 +8,15 @@ import io.opentelemetry.proto.common.v1.*;
 import io.opentelemetry.proto.resource.v1.*;
 import io.opentelemetry.proto.collector.metrics.v1.*;
 
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.common.v1.AnyValue;
+
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.TopologyConfig; // change for performance
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;

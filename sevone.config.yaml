@@ -1,0 +1,12 @@
+# Application ID should be unique for each input.topic/output.topic pair.
+# It is what allows kafka streams to scale
+application.id: sevone-cmts-cisco
+bootstrap.servers: techarch-kafka2.srv.lab.bthpny.alticeusa.net:9092
+input.topic: net.optimum.monitoring.sevone.cmts.cisco
+output.topic: net.optimum.monitoring.sevone.cmts.cisco.streams.otlp
+# Sample rate 1: 100% allow us to filter out messages in case of extremely massive topics.
+sample.rate: 1
+# format: json / protobuf
+format: json
+# Mandatory. Either sevone or zabbix (future netscout)
+source: sevone
