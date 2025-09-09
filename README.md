@@ -1,3 +1,14 @@
-# Sevone to OTLP transformer
+# RAW to OTLP transformer
 
-This is part of the transformer suite
+This is the Stechs transformer suite.
+
+Apache Kafka Streams based.
+
+Will take at the input:
+
+- SevOne
+- Zabbix
+- Netscout
+
+To generate OTLP compatible messages.
+
