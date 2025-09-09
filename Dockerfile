@@ -2,7 +2,7 @@ FROM openjdk:21-jdk-slim
 
 WORKDIR /app
 
-COPY target/sevone-to-otlp-transformer-1.1-SNAPSHOT.jar TransformSevoneToOTLP.jar
+COPY target/otlp-transformers-1.0.0.jar TransformRAWToOTLP.jar
 #COPY config.properties .
 
-ENTRYPOINT ["java", "-jar", "TransformSevoneToOTLP.jar", "-c", "/config/config.yaml"]
+ENTRYPOINT ["java", "-jar", "TransformRAWToOTLP.jar", "-c", "/config/config.yaml"]

@@ -1,5 +1,5 @@
 services:
-  kafka-streams-app:
+  kafka-streams-transform-app:
     image: gschimmel/transformers-raw-to-otlp:latest
     volumes:
       - ./config.properties:/config/config.yaml
