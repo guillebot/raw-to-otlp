@@ -4,8 +4,8 @@ application.id: zabbix-to-otlp
 # Mandatory. Either sevone or zabbix (future netscout)
 source: zabbix
 bootstrap.servers: techarch-kafka2.srv.lab.bthpny.alticeusa.net:9092
-input.topic: rednet.bluenet.com.optimum.monitoring.metrics.zabbix
-output.topic: rednet.bluenet.com.optimum.monitoring.metrics.zabbix.streams.otlp
+input.topic: com.optimum.monitoring.metrics.zabbix
+output.topic: com.optimum.monitoring.metrics.zabbix.streams.otlp
 # Sample rate 1=100% allow us to filter out messages in case of extremely massive topics.
 sample.rate: 1
 # format: json / protobuf
