@@ -1,3 +1,6 @@
+// =============================
+// File: src/main/java/com/gstechs/kafkastreams/mappers/ZabbixMapper.java
+// =============================
 package com.gstechs.kafkastreams.mappers;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -5,31 +8,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
 
 public class ZabbixMapper implements OtlpJsonMapper {
     private static final ObjectMapper M = new ObjectMapper();
 
-    // ===== Regex "cases" for Zabbix name parsing =====
-    // Case A: leading port + specific text → "443 Port State" → port=443, base="Port State"
-    private static final Pattern CASE_LEADING_PORT = Pattern.compile("^(\\d{1,5})\\s+(Port State.*)$");
-    // Case B: trailing host after separators → "... - host:21" or "..._-_host:21"
-    private static final Pattern CASE_TRAILING_HOST = Pattern.compile("^(.*?)(?:\\s-\\s|_-_)([^\\s].*)$");
-    // Case C: cert expiration form → "Cert Expiration Date: hostname" → base="Cert Expiration Date", host=hostname
-    private static final Pattern CASE_CERT_HOST = Pattern.compile("^(Cert Expiration Date):\\s+(.+)$");
-    // Case D: disk utilization → explicitly match "Disk Utilization on /path"
-    private static final Pattern CASE_DISK = Pattern.compile("^(Disk Utilization) on (/.+)$");
-    // Case E: used disk space → explicitly match "Used disk space on /path"
-    private static final Pattern CASE_USED_DISK = Pattern.compile("^(Used disk space) on (/.+)$");
-    // Case F: storage metrics with path → "/path: Storage ..."
-    private static final Pattern CASE_STORAGE = Pattern.compile("^(/.+?):\\s+(Storage.*)$");
-    // Case G: total/used space with path, including root path "/" → "/path: Total space..." or "/: Used space..."
-    private static final Pattern CASE_SPACE = Pattern.compile("^(/.*?):\\s+((Total|Used) space.*)$");
-    // Case H: CPU utilization with id → "#773: CPU utilization" → base="CPU utilization", cpu=773 (allow 1+ digits)
-    private static final Pattern CASE_CPU = Pattern.compile("^#([0-9]+):\\s+(CPU utilization.*)$");
-    // Case I: storage metrics like "/ddr/ext: Storage units" or "Storage utilization"
-    private static final Pattern CASE_STORAGE_UNITS = Pattern.compile("^(/.+?):\\s+(Storage (units|utilization))$");
+    // Load regex rules once. You can override with -Dzabbix.rules.file=/path/to/zabbix-name-rules.yaml
+    private static final String RULES_PATH_PROP = System.getProperty("zabbix.rules.file");
+    private static final NameRules RULES = NameRules.load(RULES_PATH_PROP, "/zabbix-name-rules.yaml");
+
+    static {
+        System.out.println("ZabbixMapper: rules source=" + (RULES_PATH_PROP != null ? RULES_PATH_PROP : "classpath:/zabbix-name-rules.yaml") +
+                ", loaded rules=" + RULES.ruleCount());
+    }
 
     @Override
     public String toOtlpJson(String zabbixJson, String inputTopic) throws Exception {
@@ -44,10 +35,11 @@ public class ZabbixMapper implements OtlpJsonMapper {
         long ns = root.path("ns").asLong(0L);
         long timeUnixNano = clockSec * 1_000_000_000L + ns;
 
-        // === Parse name via ordered regex cases ===
+        // === Name parsing via external rules ===
         String rawName = root.path("name").asText("zabbix.metric");
-        NameParts parts = parseNameCases(rawName);
-        String metricName = parts.base.replace(' ', '_'); // normalize only spaces
+        NameRules.Parsed parsed = RULES.apply(rawName);
+        String base = parsed.base() != null ? parsed.base() : rawName;
+        String metricName = base.replace(' ', '_'); // normalize only spaces
 
         // --- value ---
         double metricValue;
@@ -100,10 +92,12 @@ public class ZabbixMapper implements OtlpJsonMapper {
 
         ArrayNode pAttrs = M.createArrayNode();
         if (hostName != null && !hostName.isEmpty()) pAttrs.add(attr("host.name", hostName));
-        if (parts.port != null) pAttrs.add(attr("port", parts.port));
-        if (parts.host != null) pAttrs.add(attr("host", parts.host));
-        if (parts.disk != null) pAttrs.add(attr("disk", parts.disk));
-        if (parts.cpu != null) pAttrs.add(attr("cpu", parts.cpu));
+        // merge attributes coming from rules
+        for (Map.Entry<String, String> e : parsed.attributes().entrySet()) {
+            if (e.getValue() != null && !e.getValue().isEmpty()) {
+                pAttrs.add(attr(e.getKey(), e.getValue()));
+            }
+        }
         if (root.path("item_tags").isArray()) {
             for (JsonNode t : root.path("item_tags")) {
                 String k = t.path("tag").asText(null);
@@ -128,90 +122,6 @@ public class ZabbixMapper implements OtlpJsonMapper {
         out.set("resourceMetrics", resourceMetrics);
 
         return M.writeValueAsString(out);
-    }
-
-    // Ordered application of regex cases; first match wins for each kind of extraction.
-    private static NameParts parseNameCases(String raw) {
-        NameParts p = new NameParts();
-        p.base = raw == null ? "zabbix.metric" : raw.trim();
-
-        // Case B: trailing host (" - host" or "_-_host")
-        Matcher tb = CASE_TRAILING_HOST.matcher(p.base);
-        if (tb.matches()) {
-            String left = tb.group(1).trim();
-            String right = tb.group(2).trim();
-            if (right.contains(".") || right.contains(":")) {
-                p.host = right;
-                p.base = left;
-            }
-        }
-
-        // Case C: "Cert Expiration Date: host" → host=..., base="Cert Expiration Date"
-        Matcher mc = CASE_CERT_HOST.matcher(p.base);
-        if (mc.matches()) {
-            p.base = mc.group(1).trim();
-            p.host = mc.group(2).trim();
-        }
-
-        // Case A: leading port + specific text "Port State"
-        Matcher ma = CASE_LEADING_PORT.matcher(p.base);
-        if (ma.matches()) {
-            p.port = ma.group(1);
-            p.base = ma.group(2).trim();
-        }
-
-        // Case D: disk utilization → explicitly match "Disk Utilization on /path"
-        Matcher md = CASE_DISK.matcher(p.base);
-        if (md.matches()) {
-            p.base = md.group(1).trim();
-            p.disk = md.group(2).trim();
-        }
-
-        // Case E: used disk space → explicitly match "Used disk space on /path"
-        Matcher me = CASE_USED_DISK.matcher(p.base);
-        if (me.matches()) {
-            p.base = me.group(1).trim();
-            p.disk = me.group(2).trim();
-        }
-
-        // Case F: storage metrics with path → "/path: Storage ..."
-        Matcher mf = CASE_STORAGE.matcher(p.base);
-        if (mf.matches()) {
-            p.disk = mf.group(1).trim();
-            p.base = mf.group(2).trim();
-        }
-
-        // Case G: total/used space with path → "/path: Total space..." or "/path: Used space..." (allow root "/")
-        Matcher mg = CASE_SPACE.matcher(p.base);
-        if (mg.matches()) {
-            p.disk = mg.group(1).trim();
-            p.base = mg.group(2).trim();
-        }
-
-        // Case H: CPU utilization with id → "#773: CPU utilization"
-        Matcher mh = CASE_CPU.matcher(p.base);
-        if (mh.matches()) {
-            p.cpu = mh.group(1).trim();
-            p.base = mh.group(2).trim();
-        }
-
-        // Case I: storage units/utilization with path → "/path: Storage units" or "Storage utilization"
-        Matcher mi = CASE_STORAGE_UNITS.matcher(p.base);
-        if (mi.matches()) {
-            p.disk = mi.group(1).trim();
-            p.base = mi.group(2).trim();
-        }
-
-        if (p.base.isEmpty()) p.base = "zabbix.metric";
-        return p;
-    }
-
-    private static class NameParts {
-        String base;
-        String port;
-        String host;
-        String disk;
-        String cpu;
     }
 
     private ObjectNode attr(String key, String value) {

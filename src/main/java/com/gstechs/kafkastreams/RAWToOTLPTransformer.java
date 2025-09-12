@@ -85,8 +85,6 @@ public class RAWToOTLPTransformer {
                 .to(outputTopic, Produced.with(Serdes.String(), Serdes.ByteArray()));
 
         } else {
-            final OtlpJsonMapper jm = jsonMapper;
-
             input.filter((key, value) -> random.nextDouble() < sampleRate)
                 .mapValues(value -> {
                     try { return jsonMapper.toOtlpJson(value, inputTopic); }

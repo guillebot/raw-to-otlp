@@ -1,0 +1,200 @@
+# YAML file defining ordered regex rules for parsing Zabbix metric "name" into base and attributes.
+#
+# Each rule has:
+#   - id: unique identifier
+#   - pattern: regex with named capture groups (?<base> ...), (?<mount> ...), etc.
+#   - attributes: list of name/from_group mappings
+#
+# Notes:
+#   * Rules are evaluated in order; the first match wins.
+#   * Only captures listed under attributes are exported as OTLP attributes.
+#   * Spaces in base are normalized to underscores by the mapper.
+
+rules:
+  # --- GROUP: MOUNT ---
+  # 1: "Disk Utilization on /path" -> base="Disk Utilization", mount=/path
+  - id: mount_utilization_on
+    pattern: '^(?<base>Disk Utilization) on (?<mount>/.+)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # 2: "Used disk space on /path" -> base="Used disk space", mount=/path
+  - id: used_mount_space
+    pattern: '^(?<base>Used disk space) on (?<mount>/.+)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # 3: "Free disk space on /path" -> base="Free disk space", mount=/path
+  - id: free_mount_space
+    pattern: '^(?<base>Free disk space) on (?<mount>/.+)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # 4: "Total disk space on /path" -> base="Total disk space", mount=/path
+  - id: total_mount_space
+    pattern: '^(?<base>Total disk space) on (?<mount>/.+)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # 5: "Used disk space on /path" (general) -> base="Used disk space", mount=/path
+  - id: used_mount_space_general
+    pattern: '^(?<base>Used disk space) on (?<mount>/.+)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # 6: "(Used|Free) disk space on /path" -> base from capture, mount=/path
+  - id: mount_space
+    pattern: '^(?<base>(Used|Free) disk space) on (?<mount>/.+)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # 7: "/path: Storage ..."  (e.g., "/ddr/ext: Storage units") -> base="Storage...", mount=/path
+  - id: mount_storage
+    pattern: '^(?<mount>/.+?):\s+(?<base>Storage.*)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # 8: "/path: (Total|Used) space ..." (allow root "/") -> base="Total|Used space...", mount=/path
+  - id: mount_space_with_path
+    pattern: '^(?<mount>/.+?):\s+(?<base>(?:Total|Used) space.*)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # 9: "Read-only mount status on /path" -> base="Read-only mount status", mount=/path
+  - id: readonly_mount_status
+    pattern: '^(?<base>Read-only mount status) on (?<mount>/.+)$'
+    attributes:
+      - name: mount
+        from_group: mount
+
+  # --- GROUP: PROCESS ---
+  # 10: "process Process State" -> base="Process State", process=...
+  - id: process_state
+    pattern: '^(?<process>\S+)\s+(?<base>Process State.*)$'
+    attributes:
+      - name: process
+        from_group: process
+
+  # 11: "process process" -> base="process", process=...
+  - id: process_generic
+    pattern: '^(?<process>\S+)\s+(?<base>process)$'
+    attributes:
+      - name: process
+        from_group: process
+
+  # 12: "process Service Status" -> base="Service Status", process=...
+  - id: process_service_status
+    pattern: '^(?<process>\S+)\s+(?<base>Service Status.*)$'
+    attributes:
+      - name: process
+        from_group: process
+
+  # 13: "process Service State" -> base="Service State", process=...
+  - id: process_service_state
+    pattern: '^(?<process>\S+)\s+(?<base>Service State.*)$'
+    attributes:
+      - name: process
+        from_group: process
+
+  # 14: "process Process State" (general) -> base="Process State", process=...
+  - id: process_state_general
+    pattern: '^(?<process>\S+)_monitor\s+(?<base>Process State.*)$'
+    attributes:
+      - name: process
+        from_group: process
+
+  # --- GROUP: NETWORK ---
+  # 15: "Incoming network traffic on iface" -> base="Incoming network traffic", interface=iface
+  - id: net_in_traffic
+    pattern: '^(?<base>Incoming network traffic) on (?<interface>.+)$'
+    attributes:
+      - name: interface
+        from_group: interface
+
+  # 16: "Outgoing network traffic on iface" -> base="Outgoing network traffic", interface=iface
+  - id: net_out_traffic
+    pattern: '^(?<base>Outgoing network traffic) on (?<interface>.+)$'
+    attributes:
+      - name: interface
+        from_group: interface
+
+  # --- GROUP: CPU ---
+  # 17: "#773: CPU utilization" -> base="CPU utilization", cpu=773
+  - id: cpu_with_id
+    pattern: '^#(?<cpu>\d+):\s+(?<base>CPU utilization.*)$'
+    attributes:
+      - name: cpu
+        from_group: cpu
+
+  # --- GROUP: MEMORY ---
+  # 18: "#1: Total memory" -> base="Total memory", memory=1
+  - id: mem_total_with_id
+    pattern: '^#(?<memory>\d+):\s+(?<base>Total memory.*)$'
+    attributes:
+      - name: memory
+        from_group: memory
+
+  # 19: "#1: Total memory in units" -> base="Total memory", memory=1
+  - id: mem_total_in_units_with_id
+    pattern: '^#(?<memory>\d+):\s+(?<base>Total memory in units.*)$'
+    attributes:
+      - name: memory
+        from_group: memory
+
+  # 20: "#1: Memory utilization" -> base="Memory utilization", memory=1
+  - id: mem_utilization_with_id
+    pattern: '^#(?<memory>\d+):\s+(?<base>Memory utilization.*)$'
+    attributes:
+      - name: memory
+        from_group: memory
+
+  # 21: "#1: Memory units" -> base="Memory units", memory=1
+  - id: mem_units_with_id
+    pattern: '^#(?<memory>\d+):\s+(?<base>Memory units.*)$'
+    attributes:
+      - name: memory
+        from_group: memory
+
+  # --- GROUP: MISC ---
+  # 22: "443 Port State" -> base="Port State", port=443
+  - id: port_state
+    pattern: '^(?<port>\d{1,5})\s+(?<base>Port State.*)$'
+    attributes:
+      - name: port
+        from_group: port
+
+  # 23: "Cert Expiration Date: host" -> base="Cert Expiration Date", host=...
+  - id: cert_expiration
+    pattern: '^(?<base>Cert Expiration Date):\s+(?<host>.+)$'
+    attributes:
+      - name: host
+        from_group: host
+
+  # 24: "LDAP Bind Status: host" -> base="LDAP Bind Status", host=...
+  - id: ldap_bind_status
+    pattern: '^(?<base>LDAP Bind Status):\s+(?<host>.+)$'
+    attributes:
+      - name: host
+        from_group: host
+
+  # 25: "Cluster node [name]: metric" -> base=metric, host=name
+  - id: cluster_node_metric
+    pattern: '^Cluster node \[(?<host>.+?)\]:\s+(?<base>.+)$'
+    attributes:
+      - name: host
+        from_group: host
+
+  # 26: trailing host using separators " - " or "_-_" (only if RHS looks like host)
+  - id: trailing_host
+    pattern: '^(?<base>.*?)(?:\s-\s|_-_)(?<host>[^\s].*)$'
+    attributes:
+      - name: host
+        from_group: host
