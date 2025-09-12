@@ -74,20 +74,27 @@ public class RAWToOTLPTransformer {
 
         if ("protobuf".equals(format)) {
             final OtlpProtoMapper pm = protoMapper;
-            input.filter((key, value) -> random.nextDouble() < sampleRate)
-                 .mapValues(value -> {
-                     if (pm == null) return new byte[0];
-                     try { return pm.toOtlpProto(value, inputTopic); } catch (Exception e) { e.printStackTrace(); return new byte[0]; }
-                 })
-                 .to(outputTopic, Produced.with(Serdes.String(), Serdes.ByteArray()));
+
+            input
+                .filter((key, value) -> random.nextDouble() < sampleRate)
+                .mapValues(value -> {
+                    try { return pm != null ? pm.toOtlpProto(value, inputTopic) : null; }
+                    catch (Exception e) { return null; } // drop on mapping failure
+                })
+                .filter((key, bytes) -> bytes != null && bytes.length > 0)   // <-- drop nulls/empties
+                .to(outputTopic, Produced.with(Serdes.String(), Serdes.ByteArray()));
+
         } else {
             final OtlpJsonMapper jm = jsonMapper;
+
             input.filter((key, value) -> random.nextDouble() < sampleRate)
-                 .mapValues(value -> {
-                     try { return jm.toOtlpJson(value, inputTopic); } catch (Exception e) { e.printStackTrace(); return "{}"; }
-                 })
-                 .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
-        }
+                .mapValues(value -> {
+                    try { return jsonMapper.toOtlpJson(value, inputTopic); }
+                    catch (Exception e) { return null; } // drop on mapping failure
+                })
+                .filter((key, transformed) -> transformed != null)   // <-- drop nulls
+                .to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+            }
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
         streams.start();
